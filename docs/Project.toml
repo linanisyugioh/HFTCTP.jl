@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HFTCTP = "b5579599-0d46-4d06-a1a3-00ecbfd542ef"
