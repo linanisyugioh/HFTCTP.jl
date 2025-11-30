@@ -34,7 +34,7 @@ function __init__()
     if Sys.iswindows()
         dlfile = joinpath(lib_dir, "hft.dll")
     elseif Sys.islinux()
-#        dlfile = joinpath(lib_dir, "libmy_dolphindb_api.so")
+        dlfile = joinpath(lib_dir, "libhft.so")
     end
     # 验证库文件是否存在
     if !isfile(dlfile)
@@ -43,26 +43,6 @@ function __init__()
     global lib = Libc.Libdl.dlopen(dlfile)
 end
 
-function load_dll(dllpath::String="D:/workspace/ctp/win64/hft/lib/")
-    if !(dllpath in Libc.Libdl.DL_LOAD_PATH)
-        push!(Libc.Libdl.DL_LOAD_PATH, dllpath)
-    end
-    global lib = Libc.Libdl.dlopen("hft.dll") # 显式打开库
-end
-
-function close_dll()
-    global lib
-    Libc.Libdl.dlclose(lib) # 显式关闭库
-    lib = nothing
-end
-
-function reload_dll(dllpath::String="D:/workspace/ctp/win64/hft/lib/")
-    close_dll()
-    if !(dllpath in Libc.Libdl.DL_LOAD_PATH)
-        push!(Libc.Libdl.DL_LOAD_PATH, dllpath)
-    end
-    load_dll(dllpath)
-end
 #lib = "C:/workspace/ctp/win64/hft/lib/hft.dll"
 #######################################strategy_api###############################################
 """
