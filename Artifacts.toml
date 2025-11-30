@@ -8,7 +8,7 @@ os = "windows"
     url = "https://github.com/linanisyugioh/HFTCTP.jl/releases/download/V1.0.0/hftctp_windows_x64.tar.gz"
 [[hftctp_lib]]
 arch = "x86_64"
-git-tree-sha1 = "4112e60f4f225c2371a172c880c97185b4d41e75"
+git-tree-sha1 = "c3c02ba1584c27e7052a080e2c63e4dd1a502b87"
 libc = "glibc"
 os = "linux"
 
