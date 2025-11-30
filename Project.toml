@@ -3,6 +3,11 @@ uuid = "b5579599-0d46-4d06-a1a3-00ecbfd542ef"
 authors = ["linan <linanisyugioh@163.com>"]
 version = "1.0.0-DEV"
 
+[deps]
+CBinding = "d43a6710-96b8-4a2d-833c-c424785e5374"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+FinancialStruct = "d8e75018-0be8-473d-856a-83ea1b53af75"
+
 [compat]
 julia = "1.6.7"
 
