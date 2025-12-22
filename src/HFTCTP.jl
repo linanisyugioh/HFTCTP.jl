@@ -34,7 +34,7 @@ function __init__()
     if Sys.iswindows()
         dlfile = joinpath(lib_dir, "hft.dll")
     elseif Sys.islinux()
-        dlfile = joinpath(lib_dir, "libhft.so")
+        dlfile = joinpath(lib_dir, "libhft.so.1.2.1")
     end
     # 验证库文件是否存在
     if !isfile(dlfile)
@@ -225,21 +225,6 @@ end
 export strategy_set_params_setting_callback
 
 """
-    strategy_set_exec_frame_callback(on_exec_frame::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
- * 设置策略执行回调方法。
- *
- * @param cb            策略执行回调方法
- * @param user_data     用户自定义参数
-"""
-function strategy_set_exec_frame_callback(on_exec_frame::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
-    on_exec_frame_c = @cfunction($on_exec_frame, Cvoid, (UInt64, Ptr{Cvoid}))
-    sym = Libc.Libdl.dlsym(lib, :strategy_set_exec_frame_callback)
-    err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_exec_frame_c, user_data)
-    return err
-end
-export strategy_set_exec_frame_callback
-
-"""
     strategy_report_params(params_json::String)::Cint
  * 报告策略参数。
  * 一般在策略启动时通过该API向客户端报告策略运行参数，
@@ -415,6 +400,60 @@ function strategy_json_config()
 end
 export strategy_json_config
 
+"""
+    strategy_set_trading_span_callback
+ * @brief 设置交易时间段变化回调函数, 当交易时间段开始或结束时会调用此回调
+ * @param on_strategy_trading_span      交易时间段变化回调方法
+         * 当交易时间段开始之后或结束之前会调用此回调，在回调中可以进行交易时段内的准备工作或清理工作
+         on_strategy_trading_span(span_status, rc, trading_day, cur_date, time, span_name, user_data)
+         * @param span_status       交易时间段状态，true - 进入交易时间段，false - 退出交易时间段
+         * @param rc                柜台连接结果，0 - 成功，其他 - 失败 （如果是结束交易时段的回调本参数无效）
+         * @param trading_day       日期(YYYYMMDD), 归属日
+         * @param cur_date          日期(YYYYMMDD)，实际日期
+         * @param time              时间(HHMMSSmmm)
+         * @param span_name         交易时间段标识符，根据配置文件
+         * @param user_data         用户自定义参数
+ * @param user_data                     用户自定义参数
+ *
+ */
+HFT_API void strategy_set_trading_span_callback(StrategyTradingSpanCallback cb, void* user_data);
+"""
+function strategy_set_trading_span_callback(on_strategy_trading_span::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
+    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
+    sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
+    return nothing
+end
+
+"""
+/**
+ * 交易日变化回调方法定义。
+ * 当交易日开始或结束时会调用此回调，在回调中可以进行交易日内的准备工作或清理工作
+ *
+ * @param trading_day       日期(YYYYMMDD), 归属日
+ * @param cur_date          日期(YYYYMMDD)，实际日期
+ * @param time              时间(HHMMSSmmm)
+ * @param day_status        交易日状态，true - 进入交易日，false - 退出交易日
+ * @param user_data         用户自定义参数
+ */
+typedef void (*StrategyTradingDayCallback)(int trading_day, int cur_date, int time, bool day_status, void* user_data);
+
+/**
+ * @brief 设置交易日变化回调函数, 当交易日开始或结束时会调用此回调
+ *
+ * @param cb            交易日变化回调方法
+ * @param user_data     用户自定义参数
+ *
+ */
+HFT_API void strategy_set_trading_day_callback(StrategyTradingDayCallback cb, void* user_data);
+"""
+function strategy_set_trading_day_callback(on_strategy_trading_day::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
+    on_strategy_trading_day_c = @cfunction($on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{Cvoid}))
+    sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_day_callback)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_day_c, user_data)
+    return nothing
+end
+
 ##############################################md_api################################################################
 #/************************ 获取历史行情相关接口 begin ***************************/
 
@@ -583,22 +622,22 @@ function get_tickbyticks(symbols::Vector{String}, begin_time::String, end_time::
 end
 export get_tickbyticks
 
-#=
-/**
- * 获取指定时间段的历史逐笔行情数据，接口支持单个代码或多个代码组合获取数据。
- * 查询结果以回调方式返回
- *
- * @param symbol_list   证券代码列表，以逗号分开的市场.证券代码，如"sh.600000,sz.300033"
- * @param begin_time    开始时间，YYYY/MM/DD hh:mm:ss,如"2017/07/05 9:0:0"
- * @param end_time      结束时间，YYYY/MM/DD hh:mm:ss,如"2017/07/05 10:0:0"
- * @param tbts          获取的逐笔行情数据
- * @param count         获取的数据个数
- * @return              成功返回0，失败返回错误码
- */
-HFT_API int get_tickbyticks_cb(const char* symbol_list, const char* begin_time,
-                               const char* end_time, MDTickByTickCallback cb, 
-                               void* user_data);
-=#
+##
+#/**
+# * 获取指定时间段的历史逐笔行情数据，接口支持单个代码或多个代码组合获取数据。
+# * 查询结果以回调方式返回
+# *
+# * @param symbol_list   证券代码列表，以逗号分开的市场.证券代码，如"sh.600000,sz.300033"
+# * @param begin_time    开始时间，YYYY/MM/DD hh:mm:ss,如"2017/07/05 9:0:0"
+# * @param end_time      结束时间，YYYY/MM/DD hh:mm:ss,如"2017/07/05 10:0:0"
+# * @param tbts          获取的逐笔行情数据
+# * @param count         获取的数据个数
+# * @return              成功返回0，失败返回错误码
+# */
+#HFT_API int get_tickbyticks_cb(const char* symbol_list, const char* begin_time,
+#                               const char* end_time, MDTickByTickCallback cb, 
+#                               void* user_data);
+##
 
 """
     get_orderqueues(symbols::Vector{String}, begin_time::String, end_time::String)::Vector{cOrderQueueData}
