@@ -419,10 +419,10 @@ export strategy_json_config
  */
 HFT_API void strategy_set_trading_span_callback(StrategyTradingSpanCallback cb, void* user_data);
 """
-function strategy_set_trading_span_callback(on_strategy_trading_span::Function, user_data::Ptr{Cvoid}=C_NULL)
-    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
+function strategy_set_trading_span_callback(on_strategy_trading_span::Function, user_data::Ptr{nothing}=C_NULL)
+    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{nothing}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
-    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{nothing}), on_strategy_trading_span_c, user_data)
     return nothing
 end
 
@@ -447,10 +447,10 @@ end
  */
 HFT_API void strategy_set_trading_day_callback(StrategyTradingDayCallback cb, void* user_data);
 """
-function strategy_set_trading_day_callback(on_strategy_trading_day::Function, user_data::Ptr{Cvoid}=C_NULL)
-    on_strategy_trading_day_c = @cfunction($on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{Cvoid}))
+function strategy_set_trading_day_callback(on_strategy_trading_day::Function, user_data::Ptr{nothing}=C_NULL)
+    on_strategy_trading_day_c = @cfunction($on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{nothing}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_day_callback)
-    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_day_c, user_data)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{nothing}), on_strategy_trading_day_c, user_data)
     return nothing
 end
 
