@@ -414,7 +414,7 @@ on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_da
  *
  */
 """
-global on_strategy_trading_span::Function
+global on_strategy_trading_span::Union{Nothing, Function}
 
 """
    strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
@@ -427,7 +427,7 @@ global on_strategy_trading_span::Function
 global on_strategy_trading_span_c::Ptr{Cvoid} = C_NULL
 function strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
     global on_strategy_trading_span = on_strategy_trading_span_func
-    global on_strategy_trading_span_c = @cfunction(on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
+    global on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
     return nothing
@@ -445,7 +445,7 @@ end
  * @param user_data         用户自定义参数
 */
 """
-global on_strategy_trading_day::Function
+global on_strategy_trading_day::Union{Nothing, Function}
 
 """
 /**
