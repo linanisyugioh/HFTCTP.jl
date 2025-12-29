@@ -401,56 +401,68 @@ end
 export strategy_json_config
 
 """
-    strategy_set_trading_span_callback
- * @brief 设置交易时间段变化回调函数, 当交易时间段开始或结束时会调用此回调
- * @param on_strategy_trading_span      交易时间段变化回调方法
-         * 当交易时间段开始之后或结束之前会调用此回调，在回调中可以进行交易时段内的准备工作或清理工作
-         on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_date::Cint, 
-                                  cur_time::Cint, span_name::Ptr{UInt8}, user_data::Ptr{Cvoid})::Cvoid
-         * @param span_status       交易时间段状态，true - 进入交易时间段，false - 退出交易时间段
-         * @param rc                柜台连接结果，0 - 成功，其他 - 失败 （如果是结束交易时段的回调本参数无效）
-         * @param trading_day       日期(YYYYMMDD), 归属日
-         * @param cur_date          日期(YYYYMMDD)，实际日期
-         * @param time              时间(HHMMSSmmm)
-         * @param span_name         交易时间段标识符，根据配置文件
-         * @param user_data         用户自定义参数
- * @param user_data                     用户自定义参数
+on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_date::Cint, 
+                     cur_time::Cint, span_name::Ptr{UInt8}, user_data::Ptr{Cvoid})::Cvoid
+ * @brief 当交易时间段开始之后或结束之前会调用此回调，在回调中可以进行交易时段内的准备工作或清理工作
+ * @param span_status       交易时间段状态，true - 进入交易时间段，false - 退出交易时间段
+ * @param rc                柜台连接结果，0 - 成功，其他 - 失败 （如果是结束交易时段的回调本参数无效）
+ * @param trading_day       日期(YYYYMMDD), 归属日
+ * @param cur_date          日期(YYYYMMDD)，实际日期
+ * @param time              时间(HHMMSSmmm)
+ * @param span_name         交易时间段标识符，根据配置文件
+ * @param user_data         用户自定义参数
  *
  */
-HFT_API void strategy_set_trading_span_callback(StrategyTradingSpanCallback cb, void* user_data);
 """
-function strategy_set_trading_span_callback(on_strategy_trading_span::Function, user_data::Ptr{Nothing}=C_NULL)
-    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Nothing}))
+global on_strategy_trading_span::Function
+
+"""
+   strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
+ * @brief 设置交易时间段变化回调函数, 当交易时间段开始或结束时会调用此回调
+ * @param on_strategy_trading_span_func      交易时间段变化回调方法
+ * @param user_data                          用户自定义参数
+ *
+ */
+"""
+global on_trading_span_callback_c::Ptr{Cvoid} = C_NULL
+function strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
+    global on_strategy_trading_span = on_strategy_trading_span_func
+    global on_strategy_trading_span_c = @cfunction(on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
-    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Nothing}), on_strategy_trading_span_c, user_data)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
     return nothing
 end
+
+"""
+/**
+   on_strategy_trading_day(trading_day::Cint, cur_date::Cint, time::Cint, day_status::UInt8, user_data::Ptr{Cvoid})
+   @brief 当交易日开始或结束时会调用此回调，在回调中可以进行交易日内的准备工作或清理工作
+ *
+ * @param trading_day       日期(YYYYMMDD), 归属日
+ * @param cur_date          日期(YYYYMMDD)，实际日期
+ * @param time              时间(HHMMSSmmm)
+ * @param day_status        交易日状态，true - 进入交易日，false - 退出交易日
+ * @param user_data         用户自定义参数
+*/
+"""
+global on_strategy_trading_span::Function
 
 """
 /**
    strategy_set_trading_day_callback
    @brief 设置交易日变化回调函数, 当交易日开始或结束时会调用此回调  
  *
- * @param on_strategy_trading_day   交易日变化回调方法
-         on_strategy_trading_day(trading_day::Cint, cur_date::Cint, time::Cint, day_status::UInt8, user_data::Ptr{Cvoid})
-         * 当交易日开始或结束时会调用此回调，在回调中可以进行交易日内的准备工作或清理工作
-         *
-         * @param trading_day       日期(YYYYMMDD), 归属日
-         * @param cur_date          日期(YYYYMMDD)，实际日期
-         * @param time              时间(HHMMSSmmm)
-         * @param day_status        交易日状态，true - 进入交易日，false - 退出交易日
-         * @param user_data         用户自定义参数
-         */
-
- * @param user_data     用户自定义参数
+ * @param on_strategy_trading_day_func   交易日变化回调方法
+ * @param user_data                      用户自定义参数
  *
  */
-HFT_API void strategy_set_trading_day_callback(StrategyTradingDayCallback cb, void* user_data);
 """
-function strategy_set_trading_day_callback(on_strategy_trading_day::Function, user_data::Ptr{Nothing}=C_NULL)
-    on_strategy_trading_day_c = @cfunction($on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{Nothing}))
+global on_strategy_trading_day_c::Ptr{Cvoid} = C_NULL
+function strategy_set_trading_day_callback(on_strategy_trading_day_func::Function, user_data::Ptr{Cvoid}=C_NULL)
+    global on_strategy_trading_day = on_strategy_trading_day_func
+    global on_strategy_trading_day_c = @cfunction(on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{Cvoid}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_day_callback)
-    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Nothing}), on_strategy_trading_day_c, user_data)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_day_c, user_data)
     return nothing
 end
 
