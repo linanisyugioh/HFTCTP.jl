@@ -420,7 +420,7 @@ export strategy_json_config
 HFT_API void strategy_set_trading_span_callback(StrategyTradingSpanCallback cb, void* user_data);
 """
 function strategy_set_trading_span_callback(on_strategy_trading_span::Function, user_data::Ptr{Nothing}=C_NULL)
-    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{nothing}))
+    on_strategy_trading_span_c = @cfunction($on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Nothing}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Nothing}), on_strategy_trading_span_c, user_data)
     return nothing
