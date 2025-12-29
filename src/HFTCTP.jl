@@ -414,7 +414,7 @@ on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_da
  *
  */
 """
-global on_strategy_trading_span::Union{Nothing, Function}
+global on_strategy_trading_span::Union{Nothing, Function} = nothing
 
 """
    strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
@@ -445,7 +445,7 @@ end
  * @param user_data         用户自定义参数
 */
 """
-global on_strategy_trading_day::Union{Nothing, Function}
+global on_strategy_trading_day::Union{Nothing, Function} = nothing
 
 """
 /**
