@@ -424,7 +424,7 @@ global on_strategy_trading_span::Function
  *
  */
 """
-global on_trading_span_callback_c::Ptr{Cvoid} = C_NULL
+global on_strategy_trading_span_c::Ptr{Cvoid} = C_NULL
 function strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
     global on_strategy_trading_span = on_strategy_trading_span_func
     global on_strategy_trading_span_c = @cfunction(on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
@@ -445,7 +445,7 @@ end
  * @param user_data         用户自定义参数
 */
 """
-global on_strategy_trading_span::Function
+global on_strategy_trading_day::Function
 
 """
 /**
