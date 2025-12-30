@@ -414,7 +414,15 @@ on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_da
  *
  */
 """
-global on_strategy_trading_span::Union{Nothing, Function} = nothing
+const trading_span_callback = Ref{Union{Function, Nothing}}(nothing)
+function on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_date::Cint, 
+                                 cur_time::Cint, span_name::Ptr{UInt8}, user_data::Ptr{Cvoid})::Cvoid
+    if trading_span_callback[] == nothing
+    else
+        trading_span_callback[](span_status, rc, trading_day, cur_date, cur_time, span_name, user_data)
+    end
+    return nothing
+end
 
 """
    strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
@@ -426,8 +434,8 @@ global on_strategy_trading_span::Union{Nothing, Function} = nothing
 """
 #global on_strategy_trading_span_c::Ptr{Cvoid} = C_NULL
 function strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
-    global on_strategy_trading_span = on_strategy_trading_span_func
-    global on_strategy_trading_span_c = @cfunction($on_strategy_trading_span_func, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
+    global trading_span_callback[] = on_strategy_trading_span_func
+    on_strategy_trading_span_c = @cfunction(on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
     return nothing
