@@ -107,19 +107,7 @@ export strategy_exit
  *
  * @return              成功返回0，失败返回错误码，错误码定义在error.h文件中
 """
-const exit_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_strategy_exit_callback(reason::Cint, user_data::Ptr{Cvoid})::Cvoid
-    if exit_callback[] == nothing
-    else
-        exit_callback[](reason, user_data)
-    end
-    return nothing
-end
-
-function strategy_set_exit_callback(on_exit::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
-    global exit_callback[] = on_exit
-    on_exit_c = @cfunction(on_strategy_exit_callback, Cvoid, (Cint, Ptr{Cvoid}))
+function strategy_set_exit_callback(on_exit_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cint
     sym = Libc.Libdl.dlsym(lib, :strategy_set_exit_callback)
     err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_exit_c, user_data)
     return err
@@ -135,19 +123,7 @@ export  strategy_set_exit_callback
  *
  * @return              成功返回0，失败返回错误码，错误码定义在error.h文件中
 """
-const timer_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_strategy_timer_callback(interval::Cint, user_data::Ptr{Cvoid})::Cvoid
-    if timer_callback[] == nothing
-    else
-        timer_callback[](interval, user_data)
-    end
-    return nothing
-end
-
-function strategy_set_timer_callback(on_timer::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
-    global timer_callback[] = on_timer
-    on_timer_c = @cfunction(on_strategy_timer_callback, Cvoid, (Cint, Ptr{Cvoid}))
+function strategy_set_timer_callback(on_timer_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cint
     sym = Libc.Libdl.dlsym(lib, :strategy_set_timer_callback)
     err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_timer_c, user_data)
     return err
@@ -193,19 +169,7 @@ export strategy_clear_timer
  *
  * @return              成功返回0，失败返回错误码，错误码定义在error.h文件中
 """
-const day_schedule_task_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_strategy_day_schedule_task_callback(timepoint::Cint, user_data::Ptr{Cvoid})::Cvoid
-    if day_schedule_task_callback[] == nothing
-    else
-        day_schedule_task_callback[](timepoint, user_data)
-    end
-    return nothing
-end
-
-function strategy_set_day_schedule_task_callback(on_day_schedule_task::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
-    global day_schedule_task_callback[] = on_day_schedule_task
-    on_day_schedule_task_c = @cfunction(on_strategy_day_schedule_task_callback, Cvoid, (Cint, Ptr{Cvoid}))
+function strategy_set_day_schedule_task_callback(on_day_schedule_task_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cint
     sym = Libc.Libdl.dlsym(lib, :strategy_set_day_schedule_task_callback)
     err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_day_schedule_task_c, user_data)
     return err
@@ -249,21 +213,9 @@ export strategy_clear_day_schedule_task
  * @param on_params_setting       策略参数设置回调方法
  * @param user_data               用户自定义参数
 """
-const params_setting_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_strategy_params_setting_callback(params_json::Ptr{UInt8}, user_data::Ptr{Cvoid})::Cvoid
-    if params_setting_callback[] == nothing
-    else
-        params_setting_callback[](params_json, user_data)
-    end
-    return nothing
-end
-
-function strategy_set_params_setting_callback(on_params_setting::Function, user_data::Ptr{Cvoid}=C_NULL)::Cint
-    global params_setting_callback[] = on_params_setting
-    on_param_setting_c = @cfunction(on_strategy_params_setting_callback, Cvoid, (Ptr{UInt8}, Ptr{Cvoid}))
+function strategy_set_params_setting_callback(on_params_setting_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cint
     sym = Libc.Libdl.dlsym(lib, :strategy_set_params_setting_callback)
-    err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_param_setting_c, user_data)
+    err = ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_params_setting_c, user_data)
     return err
 end
 export strategy_set_params_setting_callback
@@ -458,28 +410,15 @@ on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_da
  *
  */
 """
-const trading_span_callback = Ref{Union{Function, Nothing}}(nothing)
-function on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_date::Cint, 
-                                 cur_time::Cint, span_name::Ptr{UInt8}, user_data::Ptr{Cvoid})::Cvoid
-    if trading_span_callback[] == nothing
-    else
-        trading_span_callback[](span_status, rc, trading_day, cur_date, cur_time, span_name, user_data)
-    end
-    return nothing
-end
-
 """
-   strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
+   strategy_set_trading_span_callback(on_strategy_trading_span_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)
  * @brief 设置交易时间段变化回调函数, 当交易时间段开始或结束时会调用此回调
- * @param on_strategy_trading_span_func      交易时间段变化回调方法
+ * @param on_strategy_trading_span_c      交易时间段变化回调方法
  * @param user_data                          用户自定义参数
  *
  */
 """
-#global on_strategy_trading_span_c::Ptr{Cvoid} = C_NULL
-function strategy_set_trading_span_callback(on_strategy_trading_span_func::Function, user_data::Ptr{Cvoid}=C_NULL)
-    global trading_span_callback[] = on_strategy_trading_span_func
-    on_strategy_trading_span_c = @cfunction(on_strategy_trading_span, Cvoid, (UInt8, Cint, Cint, Cint, Cint, Ptr{UInt8}, Ptr{Cvoid}))
+function strategy_set_trading_span_callback(on_strategy_trading_span_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_span_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
     return nothing
@@ -496,30 +435,17 @@ end
  * @param user_data         用户自定义参数
 */
 """
-const trading_day_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_strategy_trading_day(trading_day::Cint, cur_date::Cint, time::Cint, day_status::UInt8, user_data::Ptr{Cvoid})
-    if trading_day_callback[] == nothing
-    else
-        trading_day_callback[](trading_day, cur_date, time, day_status, user_data)
-    end
-    return nothing
-end
-
 """
 /**
    strategy_set_trading_day_callback
    @brief 设置交易日变化回调函数, 当交易日开始或结束时会调用此回调  
  *
- * @param on_strategy_trading_day_func   交易日变化回调方法
+ * @param on_strategy_trading_day_c   交易日变化回调方法
  * @param user_data                      用户自定义参数
  *
  */
 """
-#global on_strategy_trading_day_c::Ptr{Cvoid} = C_NULL
-function strategy_set_trading_day_callback(on_strategy_trading_day_func::Function, user_data::Ptr{Cvoid}=C_NULL)
-    global trading_day_callback[] = on_strategy_trading_day_func
-    on_strategy_trading_day_c = @cfunction(on_strategy_trading_day, Cvoid, (Cint, Cint, Cint, UInt8, Ptr{Cvoid}))
+function strategy_set_trading_day_callback(on_strategy_trading_day_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)
     sym = Libc.Libdl.dlsym(lib, :strategy_set_trading_day_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_day_c, user_data)
     return nothing
@@ -1003,19 +929,7 @@ export md_unsubscribeall
  * @param on_security_tick    收到证券tick行情时调用设置的回调方法
  * @param user_data           用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const security_tick_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_security_tick_callback(tick_data::Cptr{cSecurityTickData}, user_data::Ptr{Cvoid})::Cvoid
-    if security_tick_callback[] == nothing
-    else
-        security_tick_callback[](tick_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_security_tick_callback(on_security_tick::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global security_tick_callback[] = on_security_tick
-    on_security_tick_c = @cfunction(on_md_security_tick_callback, Cvoid, (Cptr{cSecurityTickData}, Ptr{Cvoid}))
+function md_set_security_tick_callback(on_security_tick_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_security_tick_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_security_tick_c, user_data)
 end
@@ -1029,19 +943,7 @@ export md_set_security_tick_callback
  * @param user_data      用户自定义参数，与回调相关的任意类型数据，
  *                       作为回调函数参数输入
 """
-const index_tick_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_index_tick_callback(tick_data::Cptr{cIndexTickData}, user_data::Ptr{Cvoid})::Cvoid
-    if index_tick_callback[] == nothing
-    else
-        index_tick_callback[](tick_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_index_tick_callback(on_index_tick::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global index_tick_callback[] = on_index_tick
-    on_index_tick_c = @cfunction(on_md_index_tick_callback, Cvoid, (Cptr{cIndexTickData}, Ptr{Cvoid}))
+function md_set_index_tick_callback(on_index_tick_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_index_tick_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_index_tick_c, user_data)
 end 
@@ -1055,19 +957,7 @@ export md_set_index_tick_callback
  * @param user_data        用户自定义参数，与回调相关的任意类型数据，
  *                         作为回调函数参数输入
 """
-const futures_tick_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_futures_tick_callback(tick_data::Cptr{cFuturesTickData}, user_data::Ptr{Cvoid})::Cvoid
-    if futures_tick_callback[] == nothing
-    else
-        futures_tick_callback[](tick_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_futures_tick_callback(on_futures_tick::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global futures_tick_callback[] = on_futures_tick
-    on_futures_tick_c = @cfunction(on_md_futures_tick_callback, Cvoid, (Cptr{cFuturesTickData}, Ptr{Cvoid}))
+function md_set_futures_tick_callback(on_futures_tick_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_futures_tick_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_futures_tick_c, user_data)
 end
@@ -1081,19 +971,7 @@ export md_set_futures_tick_callback
  * @param user_data         用户自定义参数，与回调相关的任意类型数据，
  *                          作为回调函数参数输入
 """
-const options_tick_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_options_tick_callback(tick_data::Cptr{cOptionsTickData}, user_data::Ptr{Cvoid})::Cvoid
-    if options_tick_callback[] == nothing
-    else
-        options_tick_callback[](tick_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_options_tick_callback(on_options_tick::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global options_tick_callback[] = on_options_tick
-    on_options_tick_c = @cfunction(on_md_options_tick_callback, Cvoid, (Cptr{cOptionsTickData}, Ptr{Cvoid}))
+function md_set_options_tick_callback(on_options_tick_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_options_tick_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_options_tick_c, user_data)
 end
@@ -1107,19 +985,7 @@ export md_set_options_tick_callback
  * @param user_data      用户自定义参数，与回调相关的任意类型数据，
  *                       作为回调函数参数输入
 """
-const tickbytick_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_tickbytick_callback(tick_data::Cptr{cTickByTickData}, user_data::Ptr{Cvoid})::Cvoid
-    if tickbytick_callback[] == nothing
-    else
-        tickbytick_callback[](tick_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_tickbytick_callback(on_t2t_tick::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global tickbytick_callback[] = on_t2t_tick
-    on_t2t_tick_c = @cfunction(on_md_tickbytick_callback, Cvoid, (Cptr{cTickByTickData}, Ptr{Cvoid}))
+function md_set_tickbytick_callback(on_t2t_tick_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_tickbytick_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_t2t_tick_c, user_data)
 end
@@ -1132,21 +998,9 @@ export md_set_tickbytick_callback
  * @param on_bar         证券K线回调方法
  * @param user_data      用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const security_kdata_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_security_kdata_callback(kdata::Cptr{cSecurityKdata}, user_data::Ptr{Cvoid})::Cvoid
-    if security_kdata_callback[] == nothing
-    else
-        security_kdata_callback[](kdata, user_data)
-    end
-    return nothing
-end
-
-function md_set_security_kdata_callback(on_bar::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global security_kdata_callback[] = on_bar
-    on_security_bar_c = @cfunction(on_md_security_kdata_callback, Cvoid, (Cptr{cSecurityKdata}, Ptr{Cvoid}))
+function md_set_security_kdata_callback(on_bar_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_security_kdata_callback)
-    ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_security_bar_c, user_data)
+    ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_bar_c, user_data)
 end
 export md_set_security_kdata_callback
 
@@ -1157,19 +1011,7 @@ export md_set_security_kdata_callback
 * @param on_order_queue       委托队列数据回调方法
 * @param user_data            用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const orderqueue_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_orderqueue_callback(queue_data::Cptr{cOrderQueueData}, user_data::Ptr{Cvoid})::Cvoid
-    if orderqueue_callback[] == nothing
-    else
-        orderqueue_callback[](queue_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_orderqueue_callback(on_order_queue::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global orderqueue_callback[] = on_order_queue
-    on_order_queue_c = @cfunction(on_md_orderqueue_callback, Cvoid, (Cptr{cOrderQueueData}, Ptr{Cvoid}))
+function md_set_orderqueue_callback(on_order_queue_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_orderqueue_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_order_queue_c, user_data)
 end
@@ -1182,19 +1024,7 @@ export  md_set_orderqueue_callback
 * @param on_date_update    市场日期更新回调方法
 * @param user_data         用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const date_update_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_date_update_callback(date_data::Cptr{cDateUpdateData}, user_data::Ptr{Cvoid})::Cvoid
-    if date_update_callback[] == nothing
-    else
-        date_update_callback[](date_data, user_data)
-    end
-    return nothing
-end
-
-function md_set_date_update_callback(on_date_update::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global date_update_callback[] = on_date_update
-    on_date_update_c = @cfunction(on_md_date_update_callback, Cvoid, (Cptr{cDateUpdateData}, Ptr{Cvoid}))
+function md_set_date_update_callback(on_date_update_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_date_update_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_date_update_c, user_data)
 end
@@ -1208,19 +1038,7 @@ export  md_set_date_update_callback
  * @param user_data               用户自定义参数，与回调相关的任意类型数据，
  *                                作为回调函数参数输入
 """
-const status_change_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_md_status_change_callback(status::Cint, user_data::Ptr{Cvoid})::Cvoid
-    if status_change_callback[] == nothing
-    else
-        status_change_callback[](status, user_data)
-    end
-    return nothing
-end
-
-function md_set_status_change_callback(on_md_status_change::Function, user_data::Ptr{Cvoid}=C_NULL)::Int32
-    global status_change_callback[] = on_md_status_change
-    on_md_status_change_c = @cfunction(on_md_status_change_callback, Cvoid, (Cint, Ptr{Cvoid}))
+function md_set_status_change_callback(on_md_status_change_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Int32
     sym = Libc.Libdl.dlsym(lib, :md_set_status_change_callback)
     ccall(sym, Int32, (Ptr{Cvoid}, Ptr{Cvoid}), on_md_status_change_c, user_data)
 end
@@ -1832,19 +1650,7 @@ export td_get_indicator
  * @param on_trade      回调处理函数on_trade(trade::Ptr{cTrade}, user_data::Ptr{Cvoid})
  * @param user_data     用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const trade_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_td_trade_callback(trade::Ptr{cTrade}, user_data::Ptr{Cvoid})::Cvoid
-    if trade_callback[] == nothing
-    else
-        trade_callback[](trade, user_data)
-    end
-    return nothing
-end
-
-function td_set_trade_report_callback(on_trade::Function, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
-    global trade_callback[] = on_trade
-    on_trade_c = @cfunction(on_td_trade_callback, Cvoid, (Ptr{cTrade}, Ptr{Cvoid}))
+function td_set_trade_report_callback(on_trade_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
     sym = Libc.Libdl.dlsym(lib, :td_set_trade_report_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_trade_c, user_data)
 end
@@ -1858,19 +1664,7 @@ export td_set_trade_report_callback
  * @param on_order_rsp      回调处理函数on_order_rsp(order_rsp::Ptr{cOrderRsp}, user_data::Ptr{Cvoid})
  * @param user_data         用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const order_rsp_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_td_order_rsp_callback(order_rsp::Ptr{cOrderRsp}, user_data::Ptr{Cvoid})::Cvoid
-    if order_rsp_callback[] == nothing
-    else
-        order_rsp_callback[](order_rsp, user_data)
-    end
-    return nothing
-end
-
-function td_set_order_rsp_callback(on_order_rsp::Function, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
-    global order_rsp_callback[] = on_order_rsp
-    on_order_rsp_c = @cfunction(on_td_order_rsp_callback, Cvoid, (Ptr{cOrderRsp}, Ptr{Cvoid}))
+function td_set_order_rsp_callback(on_order_rsp_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
     sym = Libc.Libdl.dlsym(lib, :td_set_order_rsp_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_order_rsp_c, user_data)
 end
@@ -1883,19 +1677,7 @@ export td_set_order_rsp_callback
  * @param on_cancel_order   回调处理函数on_cancel_order(cancel_detail::Ptr{cCancelDetail}, user_data::Ptr{Cvoid})
  * @param user_data         用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const cancel_order_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_td_cancel_order_callback(cancel_detail::Ptr{cCancelDetail}, user_data::Ptr{Cvoid})::Cvoid
-    if cancel_order_callback[] == nothing
-    else
-        cancel_order_callback[](cancel_detail, user_data)
-    end
-    return nothing
-end
-
-function td_set_cancel_order_callback(on_cancel_order::Function, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
-    global cancel_order_callback[] = on_cancel_order
-    on_cancel_order_c = @cfunction(on_td_cancel_order_callback, Cvoid, (Ptr{cCancelDetail}, Ptr{Cvoid}))
+function td_set_cancel_order_callback(on_cancel_order_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
     sym = Libc.Libdl.dlsym(lib, :td_set_cancel_order_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_cancel_order_c, user_data)
 end
@@ -1908,19 +1690,7 @@ export td_set_cancel_order_callback
  * @param on_order      回调处理函数on_order(order::Ptr{cOrder}, user_data::Ptr{Cvoid})
  * @param user_data     用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
 """
-const order_status_callback = Ref{Union{Function, Nothing}}(nothing)
-
-function on_td_order_status_callback(order::Ptr{cOrder}, user_data::Ptr{Cvoid})::Cvoid
-    if order_status_callback[] == nothing
-    else
-        order_status_callback[](order, user_data)
-    end
-    return nothing
-end
-
-function td_set_order_status_callback(on_order::Function, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
-    global order_status_callback[] = on_order
-    on_order_c = @cfunction(on_td_order_status_callback, Cvoid, (Ptr{cOrder}, Ptr{Cvoid}))
+function td_set_order_status_callback(on_order_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
     sym = Libc.Libdl.dlsym(lib, :td_set_order_status_callback)
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_order_c, user_data)
 end
