@@ -409,8 +409,6 @@ on_strategy_trading_span(span_status::UInt8, rc::Cint, trading_day::Cint, cur_da
  * @param user_data         用户自定义参数
  *
  */
-"""
-"""
    strategy_set_trading_span_callback(on_strategy_trading_span_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)
  * @brief 设置交易时间段变化回调函数, 当交易时间段开始或结束时会调用此回调
  * @param on_strategy_trading_span_c      交易时间段变化回调方法
@@ -434,8 +432,6 @@ end
  * @param day_status        交易日状态，true - 进入交易日，false - 退出交易日
  * @param user_data         用户自定义参数
 */
-"""
-"""
 /**
    strategy_set_trading_day_callback
    @brief 设置交易日变化回调函数, 当交易日开始或结束时会调用此回调  
