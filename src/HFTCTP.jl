@@ -7,7 +7,7 @@ using FinancialStruct:cIndexTickData
 using FinancialStruct:cFuturesTickData
 using FinancialStruct:cOptionsTickData
 using FinancialStruct:cSecurityKdata
-using FinancialStruct:cCodeInfo
+using FinancialStruct:cFuCodeInfo as cCodeInfo
 using FinancialStruct:cTradeDate
 using FinancialStruct:cQxData
 using FinancialStruct:cOrderQueueItemData  
