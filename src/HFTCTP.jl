@@ -2810,7 +2810,7 @@ end
 创建新的执行任务。
 检查 exec_symbol_tasks 互斥，如果已有同 symbol 任务则 force_cancel_task! 旧任务。
 """
-function create_exec_task(trade_date::Int, task_type::Symbol, symbol::String,
+function create_exec_task(trade_date::Int, symbol::String,
                           target_side::String, volume::Int, bid_price::Int64,
                           ask_price::Int64, account_id::String, account_type::Int, 
                           strategy_id::String)::String
@@ -2843,7 +2843,18 @@ function create_exec_task(trade_date::Int, task_type::Symbol, symbol::String,
     
     # 根据是否有待撤委托决定初始状态
     initial_phase = isempty(canceled_ids) ? :evaluating : :canceling
-    
+    codeinfo = get_codeinfo(symbol)
+    openlock = (codeinfo.open_commission + codeinfo.open_commission_ratio)*2
+    closelock = (codeinfo.close_pre_commission + codeinfo.close_pre_commission_ratio)*2
+    opentoday = codeinfo.open_commission + codeinfo.open_commission_ratio
+    closetoday = codeinfo.close_today_commission + codeinfo.close_today_commission_ratio
+    if openlock + closelock < opentoday + closetoday
+        task_type = :lock
+        strategy_log(2, "[ExecutionEngineV2] 使用锁仓方式: symbol=$symbol, openlock=$openlock, closelock=$closelock, opentoday=$opentoday, closetoday=$closetoday")
+    else
+        task_type = :normal
+        strategy_log(2, "[ExecutionEngineV2] 使用今日开平方式: symbol=$symbol, openlock=$openlock, closelock=$closelock, opentoday=$opentoday, closetoday=$closetoday")
+    end
     # 创建新任务
     now = now_ms()
     task_id = gen_task_id()
