@@ -37,13 +37,26 @@ function __init__()
     if Sys.iswindows()
         dlfile = joinpath(lib_dir, "hft.dll")
     elseif Sys.islinux()
-        dlfile = joinpath(lib_dir, "libhft.so.1.2.1")
+        # 动态查找 .so 文件（适配不同版本号）
+        files = readdir(lib_dir)
+        so_file = filter(f -> startswith(f, "libhft.so."), files)
+        if !isempty(so_file)
+            # 优先选择带版本号的（文件名最长的）
+            dlfile = joinpath(lib_dir, sort(so_file, by=length, rev=true)[1])
+        else
+            @error "libhft.so not found in $lib_dir"
+        end
     end
     # 验证库文件是否存在
     if !isfile(dlfile)
         @error "hftctp library files not found. Please make sure the package is installed correctly."
     end
-    global lib = Libc.Libdl.dlopen(dlfile)
+    try
+        global lib = Libc.Libdl.dlopen(dlfile)
+    catch e
+        @error "Failed to load library: $dlfile" exception=e
+        rethrow(e)
+    end
 end
 
 #lib = "C:/workspace/ctp/win64/hft/lib/hft.dll"
