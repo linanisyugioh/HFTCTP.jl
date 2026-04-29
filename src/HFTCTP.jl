@@ -2202,7 +2202,7 @@ end
   f. 同向开仓委托存在？→ 价格不一致则撤单；价格一致则检查量，不足则补差额
   g. 无障碍 → send_open_order, phase=:opening
 """
-function evaluate_for_open!(task::ExecutionTask, pos::cContractStat,
+function evaluate_for_open!(task::ExecutionTask, pos::Union{cContractStat,Nothing},
                             pending_open_long::Vector{String}, pending_open_short::Vector{String},
                             pending_close_long::Vector{String}, pending_close_short::Vector{String})
     symbol = task.symbol
@@ -2219,26 +2219,34 @@ function evaluate_for_open!(task::ExecutionTask, pos::cContractStat,
     same_open       = is_long ? pending_open_long : pending_open_short   # 同向开仓
     target_price    = is_long ? task.ask_price : task.bid_price          # 目标价格
     
-    # 反向持仓字段（需平仓的部分）
-    if is_long
-        rev_yesterday_vol = pos.yesterday_short_volume
-        rev_yesterday_frz = pos.yesterday_short_frozen
-        rev_today_vol     = pos.today_short_volume
-        rev_today_frz     = pos.today_short_frozen
+    if pos === nothing
+        rev_yesterday_vol = 0
+        rev_yesterday_frz = 0
+        rev_today_vol     = 0
+        rev_today_frz     = 0     
+        held_volume = 0    
     else
-        rev_yesterday_vol = pos.yesterday_long_volume
-        rev_yesterday_frz = pos.yesterday_long_frozen
-        rev_today_vol     = pos.today_long_volume
-        rev_today_frz     = pos.today_long_frozen
+        # 反向持仓字段（需平仓的部分）
+        if is_long
+            rev_yesterday_vol = pos.yesterday_short_volume
+            rev_yesterday_frz = pos.yesterday_short_frozen
+            rev_today_vol     = pos.today_short_volume
+            rev_today_frz     = pos.today_short_frozen
+        else
+            rev_yesterday_vol = pos.yesterday_long_volume
+            rev_yesterday_frz = pos.yesterday_long_frozen
+            rev_today_vol     = pos.today_long_volume
+            rev_today_frz     = pos.today_long_frozen
+        end
+        
+        # 同向持仓字段（检查目标是否达成）
+        if is_long
+            held_volume = pos.today_long_volume + pos.yesterday_long_volume
+        else
+            held_volume = pos.today_short_volume + pos.yesterday_short_volume
+        end
     end
-    
-    # 同向持仓字段（检查目标是否达成）
-    if is_long
-        held_volume = pos.today_long_volume + pos.yesterday_long_volume
-    else
-        held_volume = pos.today_short_volume + pos.yesterday_short_volume
-    end
-    
+
     # ---- a. 反向开仓委托存在？ ----
     if !isempty(reverse_open)
         strategy_log(2, "[ExecutionEngineV2] 发现反向开仓委托(开$(rev_label))，执行撤单: task=$(task.task_id), orders=$(join(reverse_open, ","))")
@@ -2416,7 +2424,7 @@ end
      - net > target → 平同向昨仓 或 锁反向仓
      - net < target → 平反向昨仓 或 锁同向仓
 """
-function evaluate_for_lock!(task::ExecutionTask, pos::cContractStat, pending_open_long::Vector{String}, pending_open_short::Vector{String},
+function evaluate_for_lock!(task::ExecutionTask, pos::Union{cContractStat,Nothing}, pending_open_long::Vector{String}, pending_open_short::Vector{String},
         pending_close_long::Vector{String}, pending_close_short::Vector{String})
         symbol = task.symbol        
     # ---- 方向参数绑定 ----
@@ -2426,12 +2434,21 @@ function evaluate_for_lock!(task::ExecutionTask, pos::cContractStat, pending_ope
         pending_open_negative = pending_open_short
         pending_close_positive = pending_close_long
         pending_close_negative = pending_close_short
-        today_volume_positive = pos.today_long_volume
-        today_volume_negative = pos.today_short_volume
-        yesterday_volume_positive = pos.yesterday_long_volume
-        yesterday_volume_negative = pos.yesterday_short_volume
-        today_frozen_positive = pos.today_long_frozen
-        today_frozen_negative = pos.today_short_frozen
+        if pos === nothing
+            today_volume_positive = 0
+            today_volume_negative = 0
+            yesterday_volume_positive = 0
+            yesterday_volume_negative = 0
+            today_frozen_positive = 0
+            today_frozen_negative = 0
+        else
+            today_volume_positive = pos.today_long_volume
+            today_volume_negative = pos.today_short_volume
+            yesterday_volume_positive = pos.yesterday_long_volume
+            yesterday_volume_negative = pos.yesterday_short_volume
+            today_frozen_positive = pos.today_long_frozen
+            today_frozen_negative = pos.today_short_frozen
+        end
         open_price = task.ask_price
         close_price = task.bid_price
         opposite_side = "short"
@@ -2440,12 +2457,21 @@ function evaluate_for_lock!(task::ExecutionTask, pos::cContractStat, pending_ope
         pending_open_negative = pending_open_long
         pending_close_positive = pending_close_short
         pending_close_negative = pending_close_long
-        today_volume_positive = pos.today_short_volume
-        today_volume_negative = pos.today_long_volume
-        yesterday_volume_positive = pos.yesterday_short_volume
-        yesterday_volume_negative = pos.yesterday_long_volume
-        today_frozen_positive = pos.today_short_frozen
-        today_frozen_negative = pos.today_long_frozen
+        if pos === nothing
+            today_volume_positive = 0
+            today_volume_negative = 0
+            yesterday_volume_positive = 0
+            yesterday_volume_negative = 0
+            today_frozen_positive = 0
+            today_frozen_negative = 0
+        else
+            today_volume_positive = pos.today_short_volume
+            today_volume_negative = pos.today_long_volume
+            yesterday_volume_positive = pos.yesterday_short_volume
+            yesterday_volume_negative = pos.yesterday_long_volume
+            today_frozen_positive = pos.today_short_frozen
+            today_frozen_negative = pos.today_long_frozen
+        end
         open_price = task.bid_price
         close_price = task.ask_price
         opposite_side = "long"
