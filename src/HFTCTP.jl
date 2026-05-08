@@ -7,7 +7,7 @@ using FinancialStruct:cIndexTickData
 using FinancialStruct:cFuturesTickData
 using FinancialStruct:cOptionsTickData
 using FinancialStruct:cSecurityKdata
-using FinancialStruct:cFuCodeInfo as cCodeInfo
+import FinancialStruct.cFuCodeInfo as cCodeInfo
 using FinancialStruct:cTradeDate
 using FinancialStruct:cQxData
 using FinancialStruct:cOrderQueueItemData  
@@ -1787,7 +1787,7 @@ end
 
 # 全局状态
 const exec_active_tasks = Dict{String, ExecutionTask}()   # task_id -> ExecutionTask
-const exec_symbol_tasks = Dict{String, String}()          # symbol -> task_id
+const exec_symbol_tasks = Dict{Tuple{String,String}, String}()  # (strategy_id, symbol) -> task_id
 const order_counter = Base.Threads.Atomic{Int}(0)
 
 # ============================================
@@ -2435,12 +2435,12 @@ function evaluate_for_lock!(task::ExecutionTask, pos::Union{cContractStat,Nothin
         pending_close_positive = pending_close_long
         pending_close_negative = pending_close_short
         if pos === nothing
-            today_volume_positive = 0
-            today_volume_negative = 0
-            yesterday_volume_positive = 0
-            yesterday_volume_negative = 0
-            today_frozen_positive = 0
-            today_frozen_negative = 0
+            today_volume_positive = Int32(0)
+            today_volume_negative = Int32(0)
+            yesterday_volume_positive = Int32(0)
+            yesterday_volume_negative = Int32(0)
+            today_frozen_positive = Int32(0)
+            today_frozen_negative = Int32(0)
         else
             today_volume_positive = pos.today_long_volume
             today_volume_negative = pos.today_short_volume
@@ -2458,12 +2458,12 @@ function evaluate_for_lock!(task::ExecutionTask, pos::Union{cContractStat,Nothin
         pending_close_positive = pending_close_short
         pending_close_negative = pending_close_long
         if pos === nothing
-            today_volume_positive = 0
-            today_volume_negative = 0
-            yesterday_volume_positive = 0
-            yesterday_volume_negative = 0
-            today_frozen_positive = 0
-            today_frozen_negative = 0
+            today_volume_positive = Int32(0)
+            today_volume_negative = Int32(0)
+            yesterday_volume_positive = Int32(0)
+            yesterday_volume_negative = Int32(0)
+            today_frozen_positive = Int32(0)
+            today_frozen_negative = Int32(0)
         else
             today_volume_positive = pos.today_short_volume
             today_volume_negative = pos.today_long_volume
@@ -2557,8 +2557,13 @@ end
   negative_close: net + pv <= target && frz_neg == 0 (反向平仓不会使净持仓超过目标)
   positive_close: net - pv >= target && frz_pos == 0 (同向平仓不会使净持仓低于目标)
 """
-function evaluate_for_pending_order!(task::ExecutionTask, net_volume::Int32, pending_orders::Vector{String}, side::Symbol,
-        yesterday_volume::Int32, today_frozen::Int32, open_price::Int64, close_price::Int64)
+function evaluate_for_pending_order!(task::ExecutionTask, net_volume::Integer, pending_orders::Vector{String}, side::Symbol,
+        yesterday_volume::Integer, today_frozen::Integer, open_price::Integer, close_price::Integer)
+    net_volume = Int32(net_volume)
+    yesterday_volume = Int32(yesterday_volume)
+    today_frozen = Int32(today_frozen)
+    open_price = Int64(open_price)
+    close_price = Int64(close_price)
     # ---- 按委托类型绑定参数 ----
     # sign: 用于统一公式的符号因子
     # price: 该类委托应使用的目标价格
@@ -2672,10 +2677,11 @@ end
   - :negative → yesterday_volume_negative（平反向昨仓来增加净持仓）
 - opposite_side: 与 target_side 相反的方向字符串
 """
-function evaluate_for_net_volume!(task::ExecutionTask, net_volume::Int32, side::Symbol,
-        yesterday_volume::Int32, opposite_side::String)
+function evaluate_for_net_volume!(task::ExecutionTask, net_volume::Integer, side::Symbol,
+        yesterday_volume::Integer, opposite_side::String)
     symbol = task.symbol
-    
+    net_volume = Int32(net_volume)
+    yesterday_volume = Int32(yesterday_volume)
     if side == :positive
         # 净持仓超出目标 → 需要减少 diff 手
         diff = net_volume - task.volume
@@ -2735,10 +2741,11 @@ end
 完成任务，清理全局状态。
 """
 function finalize_task!(task::ExecutionTask)
-    # 清理 symbol -> task_id 映射
-    if haskey(exec_symbol_tasks, task.symbol)
-        if exec_symbol_tasks[task.symbol] == task.task_id
-            delete!(exec_symbol_tasks, task.symbol)
+    # 清理 (strategy_id, symbol) -> task_id 映射
+    key = (task.strategy_id, task.symbol)
+    if haskey(exec_symbol_tasks, key)
+        if exec_symbol_tasks[key] == task.task_id
+            delete!(exec_symbol_tasks, key)
         end
     end
     
@@ -2818,28 +2825,42 @@ end
 行情/订单回报通知入口。
 查找该 symbol 的活跃任务，如果任务在 :canceling/:closing/:opening 阶段，切换到 :evaluating 并调用 evaluate!。
 """
+# 兼容版本：遍历所有策略的任务（单参数，用于调用方无法获取 strategy_id 的场景）
 function engine_notify!(symbol::String)
-    # 查找该 symbol 的活跃任务
-    if !haskey(exec_symbol_tasks, symbol)
+    task_ids_to_evaluate = String[]
+    for ((sid, sym), tid) in exec_symbol_tasks
+        if sym == symbol
+            push!(task_ids_to_evaluate, tid)
+        end
+    end
+    for tid in task_ids_to_evaluate
+        if haskey(exec_active_tasks, tid)
+            task = exec_active_tasks[tid]
+            if task.phase in [:canceling, :closing, :opening]
+                strategy_log(2, "[ExecutionEngineV2] 收到通知，切回评估阶段: task=$(task.task_id), phase=$(task.phase)")
+                task.phase = :evaluating
+            end
+            evaluate!(task)
+        end
+    end
+end
+
+# 精确版本：直接按 (strategy_id, symbol) 查找（双参数，O(1) 查询）
+function engine_notify!(strategy_id::String, symbol::String)
+    key = (strategy_id, symbol)
+    if !haskey(exec_symbol_tasks, key)
         return
     end
-    
-    task_id = exec_symbol_tasks[symbol]
+    task_id = exec_symbol_tasks[key]
     if !haskey(exec_active_tasks, task_id)
-        # 清理残留的映射
-        delete!(exec_symbol_tasks, symbol)
+        delete!(exec_symbol_tasks, key)
         return
     end
-    
     task = exec_active_tasks[task_id]
-    
-    # 如果任务在等待阶段，切回评估阶段
     if task.phase in [:canceling, :closing, :opening]
         strategy_log(2, "[ExecutionEngineV2] 收到通知，切回评估阶段: task=$(task.task_id), phase=$(task.phase)")
         task.phase = :evaluating
     end
-    
-    # 执行评估
     evaluate!(task)
 end
 
@@ -2847,13 +2868,17 @@ end
     create_exec_task(symbol, target_side, volume, price, strategy_id)
 
 创建新的执行任务。
-检查 exec_symbol_tasks 互斥，如果已有同 symbol 任务则 force_cancel_task! 旧任务。
+检查 exec_symbol_tasks 互斥，如果已有同策略同合约的任务则 force_cancel_task! 旧任务。
 """
-function create_exec_task(trade_date::Int, symbol::String,
-                          target_side::String, volume::Int, bid_price::Int64,
-                          ask_price::Int64, account_id::String, account_type::Int, 
+function create_exec_task(trade_date::Integer, symbol::String,
+                          target_side::String, volume::Integer, bid_price::Integer,
+                          ask_price::Integer, account_id::String, account_type::Integer, 
                           strategy_id::String)::String
-    
+    trade_date = Int(trade_date)
+    volume = Int(volume)
+    bid_price = Int64(bid_price)
+    ask_price = Int64(ask_price)
+    account_type = Int(account_type)
     # 检查参数有效性
     if !(target_side in ["long", "short"])
         strategy_log(4, "[ExecutionEngineV2] 无效的目标方向: $target_side")
@@ -2868,16 +2893,17 @@ function create_exec_task(trade_date::Int, symbol::String,
     # 获取旧任务的待撤委托（用于委托移交机制）
     canceled_ids = String[]
     
-    # 检查是否已有活跃任务
-    if haskey(exec_symbol_tasks, symbol)
-        existing_task_id = exec_symbol_tasks[symbol]
+    # 检查是否已有同策略同合约的活跃任务
+    key = (strategy_id, symbol)
+    if haskey(exec_symbol_tasks, key)
+        existing_task_id = exec_symbol_tasks[key]
         if haskey(exec_active_tasks, existing_task_id)
             old_task = exec_active_tasks[existing_task_id]
-            strategy_log(2, "[ExecutionEngineV2] 合约已有活跃任务，执行替换: symbol=$symbol, old_task=$existing_task_id, old_side=$(old_task.target_side), new_side=$target_side")
+            strategy_log(2, "[ExecutionEngineV2] 策略合约已有活跃任务，执行替换: strategy_id=$strategy_id, symbol=$symbol, old_task=$existing_task_id, old_side=$(old_task.target_side), new_side=$target_side")
             canceled_ids = force_cancel_task!(old_task)
         end
         # 清理残留的映射
-        delete!(exec_symbol_tasks, symbol)
+        delete!(exec_symbol_tasks, key)
     end
     
     # 根据是否有待撤委托决定初始状态
@@ -2923,7 +2949,7 @@ function create_exec_task(trade_date::Int, symbol::String,
     
     # 注册到全局状态
     exec_active_tasks[task_id] = task
-    exec_symbol_tasks[symbol] = task_id
+    exec_symbol_tasks[(strategy_id, symbol)] = task_id
     
     strategy_log(2, "[ExecutionEngineV2] 创建执行任务: task=$task_id, symbol=$symbol, side=$target_side, vol=$volume, bid=$bid_price, ask=$ask_price")
     
@@ -3036,7 +3062,6 @@ end
 function get_active_tasks()::Vector{String}
     return collect(keys(exec_active_tasks))
 end
-
 export create_exec_task, cancel_exec_task, engine_notify!, check_all_tasks!
 export get_task_status, get_active_tasks
 export ExecutionTask
