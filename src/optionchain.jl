@@ -172,6 +172,6 @@ function get_tm_option(price::Integer, product_month::String, option_type::Char,
 end
 
 export option_chain_init, get_tm_option, option_info
-export product_expire_month, product_call, product_put, exchange_products, 
+export product_expire_month, product_call, product_put, exchange_products
 export expire_month_strike, product_month_strike_symbol, product_month
 
