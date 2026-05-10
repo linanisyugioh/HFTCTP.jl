@@ -158,7 +158,7 @@ end
 # level为-1,-2,-3,...时, 返回虚值期权, 虚一，虚二，虚三，...
 function get_tm_option(price::Integer, product_month::String, option_type::Char, level::Integer)::String
     strikes = expire_month_strike[product_month]
-    idx = argmin(abs.(v .- price))
+    idx = argmin(abs.(strikes .- price))
     if option_type == 'C'
         idx = idx + level
     elseif option_type == 'P'
@@ -174,3 +174,4 @@ end
 export option_chain_init, get_tm_option, option_info
 export product_expire_month, product_call, product_put, exchange_products, 
 export expire_month_strike, product_month_strike_symbol, product_month
+

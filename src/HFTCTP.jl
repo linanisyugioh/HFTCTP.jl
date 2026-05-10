@@ -798,14 +798,14 @@ export get_codelist
 * @return               成功返回0，失败返回错误码
 */
 """
-function get_realtime_codelist(exchange_id::String, product_class:Cchar)::Vector{cCodeInfo}
+function get_realtime_codelist(exchange_id::String, product_class::Cchar)::Vector{cCodeInfo}
     count = Ref{Cint}()
     ci = Ref{Cptr{cCodeInfo}}(C_NULL)
     sym = Libc.Libdl.dlsym(lib, :get_realtime_codelist)
     err = ccall(sym, Cint, (Ptr{UInt8}, Cchar, Cptr{Cptr{cCodeInfo}}, Ptr{Cint}), exchange_id, product_class, ci, count)
     if err == 0
         res = cCodeInfo[]
-        for i = 1:count.x
+        for i = 1:count[]
             stdi = unsafe_load(ci[] + i - 1)
             push!(res, stdi)
         end
