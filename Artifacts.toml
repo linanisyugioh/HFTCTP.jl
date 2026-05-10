@@ -1,17 +1,17 @@
 [[hftctp_lib]]
 arch = "x86_64"
-git-tree-sha1 = "d1702ade2d1f5235e569e9224a949a78ceaa5e01"
+git-tree-sha1 = "1cad441a9ee7e902f4d6ff0090c637517c3222aa"
 os = "windows"
 
     [[hftctp_lib.download]]
-    sha256 = "25f8cdfdd94aad31e96ca6a4e37fefd5432d114b80397aa084b31192cdd0c5cc"
-    url = "https://github.com/linanisyugioh/HFTCTP.jl/releases/download/V1.3.0/hftctp_windows_x64.tar.gz"
+    sha256 = "2c40fb657d16dd55d1c0454ec2086558960d971835c819557049f3864b867230"
+    url = "https://github.com/linanisyugioh/HFTCTP.jl/releases/download/V﻿1.3.2/hftctp_windows_x64.tar.gz"
 [[hftctp_lib]]
 arch = "x86_64"
-git-tree-sha1 = "53c56a6873532223f33465438900b24393579ea4"
+git-tree-sha1 = "21afb0362ecf2aae133345d7b8dd9a8e60117e42"
 libc = "glibc"
 os = "linux"
 
     [[hftctp_lib.download]]
-    sha256 = "9f39ab70a8802e7494f33be31b72a2c3b27102734aaaad720518e1aa58fdd670"
-    url = "https://github.com/linanisyugioh/HFTCTP.jl/releases/download/V1.3.0/hftctp_linux_x64.tar.gz"
+    sha256 = "8f2a3d799c0e8685945909a24ce3e70b9ce386f7004e89e984a405706c8123be"
+    url = "https://github.com/linanisyugioh/HFTCTP.jl/releases/download/V﻿1.3.2/hftctp_linux_x64.tar.gz"
