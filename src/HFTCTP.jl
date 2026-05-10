@@ -776,6 +776,46 @@ function get_codelist(codetab::String, begin_date::String, end_date::String, onl
 end
 export get_codelist
 
+
+"""
+    get_realtime_codelist(exchange_id::String, product_class::Char)::Vector{cCodeInfo}
+* 获取实时代码列表，可按交易所和产品类型过滤,此接口中的cCodeInfo的如下字段有效：
+* @param  symbol          代码
+* @param  sec_type        代码类型
+* @param  sec_name        代码名称
+* @param  multiplier      合约乘数
+* @param  price_tick      最小价格变动单位
+* @param  trade_date_in   起始交易日期
+* @param  trade_date_out  结束交易日期
+* @param  is_halt         是否非交易：1表示非交易，0表示交易
+* @param  capital         是否支持大额单边算法：1表示支持，0表示不支持（复用字段）
+*
+* 以下是接口入参：
+* @param  exchange_id   交易所ID，为NULL或空字符串时返回全部代码
+* @param  product_class 产品类型，'\\0'映射为'0'表示全部类型。
+*                       可选值：'1'期货 '2'期货期权 '3'组合 '4'即期
+*                       '5'期转现 '6'现货期权 '7'TAS合约 'I'金属指数
+* @return               成功返回0，失败返回错误码
+*/
+"""
+function get_realtime_codelist(exchange_id::String, product_class:Cchar)::Vector{cCodeInfo}
+    count = Ref{Cint}()
+    ci = Ref{Cptr{cCodeInfo}}(C_NULL)
+    sym = Libc.Libdl.dlsym(lib, :get_realtime_codelist)
+    err = ccall(sym, Cint, (Ptr{UInt8}, Cchar, Cptr{Cptr{cCodeInfo}}, Ptr{Cint}), exchange_id, product_class, ci, count)
+    if err == 0
+        res = cCodeInfo[]
+        for i = 1:count.x
+            stdi = unsafe_load(ci[] + i - 1)
+            push!(res, stdi)
+        end
+        return res
+    else
+        return cCodeInfo[]
+    end
+end
+
+
 """
     get_codeinfo(code::String, date::String)::cCodeInfo
 * 获取某天的某个代码信息，包含各种股票、期货和期权
@@ -1710,5 +1750,6 @@ export td_set_order_status_callback
 
 
 include("execution_engine.jl")
+include("optionchain.jl")
 
 end
