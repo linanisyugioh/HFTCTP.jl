@@ -18,9 +18,10 @@ struct option_info
     month::UInt32
     option_type::Char
     strike::Int64
+    series::String      # "" 普通期权, "MS" 系列期权
 end
 
-function parse_option_code(code::String; ref_year::Integer=year(today()))::option_info
+function parse_option_code(code::String; ref_year::Integer=year(Dates.today()))::option_info
     # 分离交易所和合约代码
     exchange = ""
     symbol = code
@@ -36,27 +37,32 @@ function parse_option_code(code::String; ref_year::Integer=year(today()))::optio
     strike = ""
     product = ""
     product_month = ""
+    series = ""
     if occursin('-', symbol)
-        # 格式1: 品种YYMM-C/P-行权价 (CFFEX, DCE, GFEX)
-        m = match(r"^([A-Za-z]+)(\d{4})-([CP])-(\d+)$", symbol)
+        # 格式1: 品种YYMM[-系列]-C/P-行权价 (CFFEX, DCE, GFEX)
+        # 普通: c2607-P-2040 | 系列: c2607-MS-P-2040
+        m = match(r"^([A-Za-z]+)(\d{4})(?:-([A-Z]+))?-([CP])-(\d+)$", symbol)
         if m !== nothing
             product = m.captures[1]
-            product_month = string(exchange,".",m.captures[1], m.captures[2])
             ym = m.captures[2]
-            option_type = m.captures[3][1]
-            strike = m.captures[4]
+            series = m.captures[3] !== nothing ? m.captures[3] : ""
+            option_type = m.captures[4][1]
+            strike = m.captures[5]
+            product_month = string(exchange, ".", product, ym, series)
             opt_year = 2000 + parse(UInt32, ym[1:2])
             opt_month = parse(UInt32, ym[3:4])
         end
     else
-        # 紧凑格式: 用 \d[CP]\d 定位期权类型字符
-        m = match(r"^([A-Za-z]+)(\d+)([CP])(\d+)$", symbol)
+        # 紧凑格式: 品种+年月[+系列]+C/P+行权价
+        # 普通: SR607C6000 | 系列: SR607MSC6000
+        m = match(r"^([A-Za-z]+)(\d+)(MS)?([CP])(\d+)$", symbol)
         if m !== nothing
             product = m.captures[1]
             ym = m.captures[2]
-            option_type = m.captures[3][1]
-            strike = m.captures[4]
-            product_month = string(exchange,".",m.captures[1], m.captures[2])
+            series = m.captures[3] !== nothing ? m.captures[3] : ""
+            option_type = m.captures[4][1]
+            strike = m.captures[5]
+            product_month = string(exchange, ".", product, ym, series)
             if length(ym) == 4
                 # 格式2: SHFE/INE — 4位年月
                 opt_year = 2000 + parse(UInt32, ym[1:2])
@@ -77,21 +83,24 @@ function parse_option_code(code::String; ref_year::Integer=year(today()))::optio
     end
     return option_info(code, exchange, string(exchange,",",product), product_month,
             UInt32(opt_year), UInt32(opt_month), 
-            uppercase(option_type), parse(Int64, strike))
+            uppercase(option_type), parse(Int64, strike), series)
 end
 
-function option_chain_init(; ref_year::Integer=year(today()))
+function option_chain_init(; ref_year::Integer=year(Dates.today()))
     product_class = Cchar('2')
-    exchange_id = ""
-    codeinfos = get_realtime_codelist(exchange_id, product_class)
-    option_chain_init(codeinfos; ref_year=ref_year)
+    exchange_ids = ["DCE", "SHFE", "INE", "CZCE", "GFEX"]
+    for exchange_id in exchange_ids
+        codeinfos = get_realtime_codelist(exchange_id, product_class)
+        option_chain_init(codeinfos; ref_year=ref_year)
+    end
     product_class = Cchar('6')
+    exchange_id = "CFFEX"
     codeinfos = get_realtime_codelist(exchange_id, product_class)
     option_chain_init(codeinfos; ref_year=ref_year)
     return nothing
 end
 
-function option_chain_init(codeinfos::Vector{cCodeInfo}; ref_year::Integer=year(today()))
+function option_chain_init(codeinfos::Vector{cCodeInfo}; ref_year::Integer=year(Dates.today()))
     for codeinfo in codeinfos
         if codeinfo.is_halt == 1
             continue
