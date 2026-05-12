@@ -83,6 +83,19 @@ const order_counter = Base.Threads.Atomic{Int}(0)
 # ============================================
 # 2. 工具函数
 # ============================================
+# 字符串转 Carray，用于填充 C 语言结构体
+function str_to_carray_memcpy(s::String, ::Val{N}) where N
+    ref = Libc.malloc(Carray{Int8, N}())
+    GC.@preserve s ref begin
+        len = min(ncodeunits(s), N)
+        unsafe_copyto!(
+            Ptr{UInt8}(Base.unsafe_convert(Ptr{Carray{Int8, N}}, ref)),
+            pointer(s),
+            len
+        )
+    end
+    return ref[]
+end
 
 # 当前时间毫秒数
 function now_ms()::Int64
@@ -332,15 +345,16 @@ function send_order!(task::ExecutionTask, symbol::String, action::Symbol,
         end
         # ========== 公共部分：构造并发送订单 ==========
         cl_order_id = gen_cl_order_id(task.task_id)
+        cl_order_id_carray = str_to_carray_memcpy(string(task.strategy_id,",",cl_order_id), Val(32))
+        symbol_carray = str_to_carray_memcpy(symbol, Val(32))
         order = cOrderReq(
-            cl_order_id = string(task.strategy_id,",",cl_order_id),
-            symbol = symbol,
+            cl_order_id = cl_order_id_carray,
+            symbol = symbol_carray,
             order_type = Int16(1),      # 限价单
             side = side_val,
             volume = volume,
             price = price,
             hedge_flag = Int16(1),
-            ext_info = ""
         )
         orders = cOrderReq[order]
         # 调用发单接口
@@ -1356,3 +1370,4 @@ end
 export create_exec_task, cancel_exec_task, engine_notify!, check_all_tasks!
 export get_task_status, get_active_tasks
 export ExecutionTask
+export str_to_carray_memcpy
