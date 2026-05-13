@@ -362,7 +362,13 @@ function send_order!(task::ExecutionTask, symbol::String, action::Symbol,
         if err != 0
             action_str = action == :open ? "开仓" : "平仓"
             task.error_msg = "$(action_str)发单失败，错误码: $err"
-            strategy_log(4, "[ExecutionEngineV2] $(task.error_msg), task=$(task.task_id)")
+            strategy_log(4, "[ExecutionEngineV2] $(task.error_msg), task=$(task.task_id), acount_id=$(task.account_id), account_type=$(task.account_type)")
+            fields = fieldnames(cOrderReq)
+            order_str = "OrderReq\n"
+            for name in fields
+                order_str = string(order_str, name, "=", repr(getproperty(orders[1], name)),"\n")
+            end
+            strategy_log(4, order_str)
             return false
         end
         # 记录最后发出的 cl_order_id
