@@ -1748,7 +1748,47 @@ function td_set_order_status_callback(on_order_c::Ptr{Nothing}, user_data::Ptr{C
 end
 export td_set_order_status_callback
 
+const oms_query_order = Ref{Function}()
+oms_query_order[] = OrderManager.om_query_order
+const oms_query_position = Ref{Function}(OrderManager.om_query_contract_stat)
+const oms_query_fund      = Ref{Function}(OrderManager.om_query_fund)
+const oms_query_order_ids = Ref{Function}(OrderManager.om_query_order_ids)
+const oms_query_order_id_by_cl = Ref{Function}(OrderManager.om_query_order_id_by_cl_order_id)
+const oms_query_order_cl_and_strategy = Ref{Function}(OrderManager.om_query_order_cl_and_strategy)
+const oms_query_strategy_ids = Ref{Function}(OrderManager.om_query_strategy_ids)
 
+function set_oms_query_fund(f::Function)
+    oms_query_fund[] = f
+end
+
+function set_oms_query_order_ids(f::Function)
+    oms_query_order_ids[] = f
+end
+
+function set_oms_query_order_id_by_cl(f::Function)
+    oms_query_order_id_by_cl[] = f
+end
+
+function set_oms_query_order_cl_and_strategy(f::Function)
+    oms_query_order_cl_and_strategy[] = f
+end
+
+function set_oms_query_order(f::Function)
+    global oms_query_order
+    oms_query_order[] = f
+end
+
+function set_oms_query_position(f::Function)
+    global oms_query_position
+    oms_query_position[] = f
+end
+
+function set_oms_query_strategy_ids(f::Function)
+    global oms_query_strategy_ids
+    oms_query_strategy_ids[] = f
+end
+
+include("risk_management.jl")
 include("execution_engine.jl")
 include("optionchain.jl")
 

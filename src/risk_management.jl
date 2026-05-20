@@ -37,6 +37,11 @@ const RM_TYPE_RISK_RATE      = 4
 const RM_TYPE_MAX_CLOSE      = 5
 const RM_TYPE_MAX_CAPITAL    = 6
 
+# 持锁耗时告警阈值（毫秒）
+# rm_order / rm_price 等热路径的 lock(rm_lock) 块若包含 lock 等待 + 持有 + 释放
+# 累计耗时超过此阈值，写一条 warn 日志，便于定位风控模块性能瓶颈。
+# 正常生产环境应远低于此值（< 10ms）。
+const RM_LOCK_WARN_MS = 10
 
 # ============================================
 # 数据结构
@@ -431,12 +436,18 @@ end
 # ============================================
 
 """
-    rm_order(inorders::Vector{cOrderReq})::Vector{Int}
+    rm_order(inorders::Vector{cOrderReq}; emergency::Bool=false)::Vector{Int}
 
 批量下单前风控检查。
 
-入参 cl_order_id 约定为 "strategy_id,cl_order_id" 格式（逗号分隔），
+入参 cl_order_id 约定为 'strategy_id,cl_order_id' 格式（逗号分隔），
 内部解析后按策略走风控规则；不含逗号的 cl_order_id 视作非策略单，直接放行。
+
+emergency=true 时只跑白名单内的规则（FrequentOrderRule + MaxCloseRule），其它一律跳过。
+- FrequentOrderRule：提供时序锁，等上一笔回报到达再发下一笔，让 OMS 状态保持新鲜
+- MaxCloseRule：持仓校验，依赖 FreqRule 提供的'OMS 已新鲜'前提，防止跨策略平仓
+其它规则（含将来新增的）默认全部跳过——避免触发型规则（MaxDrawback/MaxLoss/RiskRate）
+持续阻挡紧急清仓自身的发单。新加规则若需在紧急路径生效，请显式加入白名单。
 
 返回：长度等于 inorders 的 Vector{Int}
   - results[i] = 0       第 i 个委托通过风控
@@ -444,11 +455,12 @@ end
 
 风控未初始化时返回全 0（即放行）。
 """
-function rm_order(inorders::Vector{cOrderReq})::Vector{Int}
+function rm_order(inorders::Vector{cOrderReq}; emergency::Bool=false)::Vector{Int}
     results = zeros(Int, length(inorders))
     if !rm_initialized[]
         return results
     end
+    t_lock_start = time_ns()
     lock(rm_lock) do
         for i in 1:length(inorders)
             order = inorders[i]
@@ -468,7 +480,7 @@ function rm_order(inorders::Vector{cOrderReq})::Vector{Int}
                 results[i] = 0
                 continue
             end
-            
+
             # 记录已知策略
             push!(rm_known_strategies, strategy_id)
 
@@ -477,6 +489,10 @@ function rm_order(inorders::Vector{cOrderReq})::Vector{Int}
             # 逐条风控规则检查（短路：一旦触发任一规则即停止）
             for rule in rm_rules
                 if !rule.switch
+                    continue
+                end
+                # 紧急模式只跑白名单内的规则；其它一律跳过
+                if emergency && !(rule isa FrequentOrderRule || rule isa MaxCloseRule)
                     continue
                 end
                 if rule isa FrequentOrderRule
@@ -507,7 +523,29 @@ function rm_order(inorders::Vector{cOrderReq})::Vector{Int}
             end
         end
     end
+    elapsed_ms = (time_ns() - t_lock_start) ÷ 1_000_000
+    if elapsed_ms > RM_LOCK_WARN_MS
+        strategy_log(3, "[RiskManagement] rm_order 持锁/等待 $(elapsed_ms)ms 超过阈值 $(RM_LOCK_WARN_MS)ms, 订单数=$(length(inorders))")
+    end
     return results
+end
+
+"""
+    rm_unregister_pending(strategy_id::String, cl_order_id::String)
+
+回滚 FrequentOrderRule 对该 strategy_id 的"已发出"登记。
+用于 td_order 失败 / 异常时由调用方调用——rm_order 在风控通过的瞬间就把
+rm_pending_orders[strategy_id] 写为 cl_order_id，但若后续真正的发单步骤失败，
+这条 cl_order_id 永远不会到达 OMS、永远拿不到回报，FrequentOrderRule 会永久卡死该策略。
+
+仅当当前 pending 与传入的 cl_order_id 完全一致时才删除——防止并发场景下误删后续合法记录。
+"""
+function rm_unregister_pending(strategy_id::String, cl_order_id::String)
+    lock(rm_lock) do
+        if get(rm_pending_orders, strategy_id, "") == cl_order_id
+            delete!(rm_pending_orders, strategy_id)
+        end
+    end
 end
 
 # ============================================
@@ -546,6 +584,7 @@ function rm_price(trade_date::Integer, code::String, ask_price::Integer, bid_pri
     ask_price = Int64(ask_price)
     bid_price = Int64(bid_price)
     match_price = Int64(match_price)
+    t_lock_start = time_ns()
     lock(rm_lock) do
         # ---- 2/3/4 类紧急风控：回撤、亏损、风险度 ----
         external_ids = try
@@ -581,6 +620,10 @@ function rm_price(trade_date::Integer, code::String, ask_price::Integer, bid_pri
                 strategy_log(4, "[RiskManagement] 创建风控清仓任务异常: strategy_id=$strategy_id, code=$code, error=$e")
             end
         end
+    end
+    elapsed_ms = (time_ns() - t_lock_start) ÷ 1_000_000
+    if elapsed_ms > RM_LOCK_WARN_MS
+        strategy_log(3, "[RiskManagement] rm_price 持锁/等待 $(elapsed_ms)ms 超过阈值 $(RM_LOCK_WARN_MS)ms, code=$code")
     end
     return nothing
 end
