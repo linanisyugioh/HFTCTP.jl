@@ -242,6 +242,7 @@ function check_phase_status!(task::ExecutionTask)
         
     elseif task.phase == :closing
         # 检查平仓单是否已终态（全成或已撤）
+        strategy_log(2, "[ExecutionEngineV2] closing完成，切回评估阶段: task=$(task.task_id)")
         task.phase = :evaluating
         return true
 #        if !isempty(task.last_sent_cl_order_id)
@@ -261,6 +262,7 @@ function check_phase_status!(task::ExecutionTask)
         
     elseif task.phase == :opening
         # 检查开仓单是否已全成
+        strategy_log(2, "[ExecutionEngineV2] opening完成，切回评估阶段: task=$(task.task_id)")
         task.phase = :evaluating
         return true
 #        if elapsed > task.timeout_ms
@@ -457,8 +459,10 @@ function exec_cancel_orders!(task::ExecutionTask, order_ids::Vector{String})::Bo
         end
         
         # 调用撤单接口
-        td_cancel_order(task.account_id, task.account_type, order_ids, true)
-        
+        err = td_cancel_order(task.account_id, task.account_type, order_ids, true)
+        if err != 0
+            strategy_log(4, "[ExecutionEngineV2] 撤单异常: task=$(task.task_id), error=$(err)")
+        end
         # 记录撤单目标
         task.last_cancel_target_ids = copy(order_ids)
         task.last_action_time = now_ms()
@@ -512,6 +516,7 @@ function evaluate!(task::ExecutionTask)
 
         # 如果阶段已改变，重新评估
         if phase_changed && task.phase == :evaluating
+            strategy_log(2, "[ExecutionEngineV2] 阶段已改变，重新评估: task=$(task.task_id)")
             # 继续执行下面的评估逻辑
         elseif task.phase in [:completed, :failed]
             # 任务已结束，清理
@@ -1736,14 +1741,11 @@ function finalize_task!(task::ExecutionTask)
 end
 
 function query_pending_orders(strategy_id::String, symbol::String, side::Integer, bs::Integer)::Vector{String}
-    order_ids_str = OrderManager.om_query_order_ids(strategy_id, 0, symbol, side, bs)
-    if isempty(order_ids_str)
+    order_ids = OrderManager.om_query_order_ids(strategy_id, 0, symbol, side, bs)
+    if isempty(order_ids)
         return String[]
     end
-    # 解析逗号分隔的字符串
-    order_ids = split(order_ids_str, ",")
-    # 过滤空字符串
-    return filter(!isempty, order_ids)
+    return order_ids
 end
 
 const oms_query_pending_orders = Ref{Function}(query_pending_orders)
@@ -1773,7 +1775,10 @@ function force_cancel_task!(task::ExecutionTask)::Vector{String}
         
         if !isempty(all_pending)
             strategy_log(2, "[ExecutionEngineV2] 撤销旧任务的未终态委托: task=$(task.task_id), orders=$(join(all_pending, ","))")
-            td_cancel_order(task.account_id, task.account_type, all_pending, true)
+            err = td_cancel_order(task.account_id, task.account_type, all_pending, true)
+            if err != 0
+                strategy_log(4, "[ExecutionEngineV2] 撤单异常: task=$(task.task_id), error=$(err)")
+            end
             canceled_ids = all_pending
         end
     catch e
@@ -2123,7 +2128,10 @@ function cancel_exec_task(task_id::String)::Bool
         
         if !isempty(all_pending)
             strategy_log(2, "[ExecutionEngineV2] 用户取消任务，撤销相关委托: task=$task_id")
-            td_cancel_order(task.account_id, task.account_type, all_pending, true)
+            err = td_cancel_order(task.account_id, task.account_type, all_pending, true)
+            if err != 0
+                strategy_log(4, "[ExecutionEngineV2] 撤单异常: task=$(task.task_id), error=$(err)")
+            end
         end
     catch e
         strategy_log(3, "[ExecutionEngineV2] 取消任务撤单异常: task=$task_id, error=$e")

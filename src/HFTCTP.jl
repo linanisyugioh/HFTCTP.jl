@@ -1167,12 +1167,13 @@ export td_reverse_repurchase
  *
  * @return cancel_list  返回撤单详情列表(异步撤单时返回空)
 """
-function td_cancel_order(account_id::String, account_type::Integer, order_ids::Vector{String}, is_async::Bool=true)::Vector{cCancelDetail}
+function td_cancel_order(account_id::String, account_type::Integer, order_ids::Vector{String}, is_async::Bool=true)::Union{Int32,Vector{cCancelDetail}}
     orders = join(order_ids, ",")
     cancel_list = cCancelDetail[]
     sym = Libc.Libdl.dlsym(lib, :td_cancel_order)
     if is_async
         err = ccall(sym, Int32, (Ptr{UInt8}, Cint, Ptr{UInt8}, Cptr{Cptr{cCancelDetail}}, Ptr{Cint}), account_id, account_type, orders, C_NULL, C_NULL)
+        return err
     else
         len_r = Ref{Cint}(0)
         cancel_list_r = Ref{Cptr{cCancelDetail}}(C_NULL)
@@ -1200,11 +1201,12 @@ export td_cancel_order
  *
  * @return cancel_list  返回撤单详情列表(异步撤单时返回空)
 """
-function td_cancel_all_order(account_id::String, account_type::Integer; trade_seqno::Integer=0, is_async::Bool=true)::Vector{cCancelDetail}
+function td_cancel_all_order(account_id::String, account_type::Integer; trade_seqno::Integer=0, is_async::Bool=true)::Union{Int32,Vector{cCancelDetail}}
     cancel_list = cCancelDetail[]
     sym = Libc.Libdl.dlsym(lib, :td_cancel_all_order)
     if is_async
         err = ccall(sym, Int32, (Ptr{UInt8}, Cint, Cint, Cptr{Cptr{cCancelDetail}}, Ptr{Cint}), account_id, account_type, trade_seqno, C_NULL, C_NULL)
+        return err
     else
         len_r = Ref{Cint}(0)
         cancel_list_r = Ref{Cptr{cCancelDetail}}(C_NULL)
