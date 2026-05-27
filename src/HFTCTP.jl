@@ -1758,6 +1758,11 @@ const oms_query_order_ids = Ref{Function}(OrderManager.om_query_order_ids)
 const oms_query_order_id_by_cl = Ref{Function}(OrderManager.om_query_order_id_by_cl_order_id)
 const oms_query_order_cl_and_strategy = Ref{Function}(OrderManager.om_query_order_cl_and_strategy)
 const oms_query_strategy_ids = Ref{Function}(OrderManager.om_query_strategy_ids)
+const oms_query_position_codes = Ref{Function}(OrderManager.om_query_position_codes)
+
+function set_oms_query_position_codes(f::Function)
+    oms_query_position_codes[] = f
+end
 
 function set_oms_query_fund(f::Function)
     oms_query_fund[] = f

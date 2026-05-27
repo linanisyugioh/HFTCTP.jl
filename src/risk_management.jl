@@ -593,8 +593,14 @@ function rm_price(trade_date::Integer, code::String, ask_price::Integer, bid_pri
             strategy_log(3, "[RiskManagement] 查询策略列表异常: $e")
             String[]
         end
-        all_strategy_ids = union(rm_known_strategies, external_ids)
+        external_ids = union(rm_known_strategies, external_ids)
+        all_strategy_ids = Vector{String}()
         # 触发的策略 → 首次命中的规则名（同策略多规则触发时只记录第一次，避免日志失真）
+        for strategy_id in all_strategy_ids
+            if code in oms_query_position_codes(strategy_id, 2, 2, 2)
+                push!(all_strategy_ids, strategy_id)
+            end
+        end
         close_strategies = Dict{String, String}()
         for rule in rm_rules
             if !rule.switch

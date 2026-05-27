@@ -1808,6 +1808,7 @@ end
 """
 # 兼容版本：遍历所有策略的任务（单参数，用于调用方无法获取 strategy_id 的场景）
 function engine_notify!(symbol::String)
+    strategy_log(2, "[ExecutionEngineV2] 收到通知: symbol=$(symbol)")
     task_ids_to_evaluate = String[]
     for ((sid, sym), tid) in exec_symbol_tasks
         if sym == symbol
@@ -1837,6 +1838,7 @@ function engine_notify!(strategy_id::String, symbol::String)
         delete!(exec_symbol_tasks, key)
         return
     end
+    strategy_log(2, "[ExecutionEngineV2] 收到通知: strategy_id=$(strategy_id), symbol=$(symbol)")
     task = exec_active_tasks[task_id]
     if task.phase in [:canceling, :closing, :opening]
         strategy_log(2, "[ExecutionEngineV2] 收到通知，切回评估阶段: task=$(task.task_id), phase=$(task.phase)")
