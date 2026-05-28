@@ -423,7 +423,7 @@ function check_rule(rule::MaxCapitalRule, strategy_id::String, symbol::String, s
     avail_cash = fund.avail_cash
     # 计算开仓资金（近似：价格 × 手数）
     open_capital = price * volume * multiplier * margin_ratio  # 扩大一万倍后的价格 × 手数
-    fee = (volume*codeinfo.open_commission + price * volume * multiplier *codeinfo.open_commission_ratio)/100000.0
+    fee = (volume*codeinfo.open_commission/10000.0 + price * volume * multiplier *codeinfo.open_commission_ratio/10000000.0)
     if avail_cash < open_capital + fee
         strategy_log(2, "[RiskManagement] 最大资金风控拦截(资金不足): strategy_id=$strategy_id, symbol=$symbol, side=$side, volume=$volume, open_capital=$open_capital, avail_cash=$avail_cash")
         return RM_TYPE_MAX_CAPITAL
