@@ -1808,7 +1808,7 @@ end
 """
 # 兼容版本：遍历所有策略的任务（单参数，用于调用方无法获取 strategy_id 的场景）
 function engine_notify!(symbol::String)
-    strategy_log(2, "[ExecutionEngineV2] 收到通知: symbol=$(symbol)")
+#    strategy_log(2, "[ExecutionEngineV2] 收到通知: symbol=$(symbol)")
     task_ids_to_evaluate = String[]
     for ((sid, sym), tid) in exec_symbol_tasks
         if sym == symbol
