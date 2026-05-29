@@ -1831,6 +1831,7 @@ end
 function engine_notify!(strategy_id::String, symbol::String)
     key = (strategy_id, symbol)
     if !haskey(exec_symbol_tasks, key)
+        strategy_log(2, "[ExecutionEngineV2] 收到通知但无活跃任务: strategy_id=$(strategy_id), symbol=$(symbol)")
         return
     end
     task_id = exec_symbol_tasks[key]
