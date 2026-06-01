@@ -1818,6 +1818,7 @@ function engine_notify!(symbol::String)
     for tid in task_ids_to_evaluate
         if haskey(exec_active_tasks, tid)
             task = exec_active_tasks[tid]
+            strategy_log(2, "[ExecutionEngineV2] 收到通知(单参): task=$(tid), phase=$(task.phase)")
             if task.phase in [:canceling, :closing, :opening]
                 strategy_log(2, "[ExecutionEngineV2] 收到通知，切回评估阶段: task=$(task.task_id), phase=$(task.phase)")
                 task.phase = :evaluating
