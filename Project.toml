@@ -1,7 +1,7 @@
 name = "HFTCTP"
 uuid = "b5579599-0d46-4d06-a1a3-00ecbfd542ef"
 authors = ["linan <linanisyugioh@163.com>"]
-version = "1.3.7"
+version = "1.3.8"
 
 [deps]
 CBinding = "d43a6710-96b8-4a2d-833c-c424785e5374"
