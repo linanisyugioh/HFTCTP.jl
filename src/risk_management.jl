@@ -548,6 +548,25 @@ function rm_unregister_pending(strategy_id::String, cl_order_id::String)
     end
 end
 
+"""
+    rm_on_trading_day_change()
+
+日切处理：清空 rm_pending_orders。
+
+OMS 在跨交易日时会重置当日委托记录，但 rm_pending_orders 是进程级 in-memory 状态，
+不随 OMS 同步清理。若上一交易日末尾的 cl_order_id 跨入新一日，oms_query_order_id_by_cl
+查询会因记录已轮转而返回空字符串，导致 FrequentOrderRule 误判为"上一笔未收回报"
+而拦截当日新委托。日切时主动清空可消除此误拦截。
+"""
+function rm_on_trading_day_change()
+    lock(rm_lock) do
+        if !isempty(rm_pending_orders)
+            strategy_log(2, "[RiskManagement] 日切清空 rm_pending_orders, count=$(length(rm_pending_orders))")
+            empty!(rm_pending_orders)
+        end
+    end
+end
+
 # ============================================
 # 主接口：rm_price
 # ============================================
