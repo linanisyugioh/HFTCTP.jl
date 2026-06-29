@@ -25,6 +25,8 @@ import FinancialStruct.cFuPosition as cPosition
 using FinancialStruct:cCash        
 using FinancialStruct:cIndicator
 using FinancialStruct:cContractStat
+using FinancialStruct:cCombActionReq
+using FinancialStruct:cCombAction
 using Dates
 using OrderManager
 
@@ -60,6 +62,24 @@ function __init__()
 end
 
 #lib = "C:/workspace/ctp/win64/hft/lib/hft.dll"
+###################################### common ####################################################
+"""
+    hft_strerror(err::Integer; utf8::Bool=true)::String
+ * 将 hftsdk 错误码转换为可读字符串。
+ *
+ * @param err           错误码（参见 error.h，如 8000~8999 是交易侧错误码）
+ * @param utf8          true（默认）：始终返回 UTF8 编码的错误消息（调用 hft_strerror_utf8）；
+ *                      false：返回平台原生编码（Windows GBK，Linux UTF8）。
+ *
+ * @return              错误消息字符串
+"""
+function hft_strerror(err::Integer; utf8::Bool=true)::String
+    sym = Libc.Libdl.dlsym(lib, utf8 ? :hft_strerror_utf8 : :hft_strerror)
+    cstr = ccall(sym, Ptr{Cchar}, (Cint,), err)
+    cstr == C_NULL ? "" : unsafe_string(cstr)
+end
+export hft_strerror
+
 #######################################strategy_api###############################################
 """
     strategy_init(config_dir::String="./", log_dir::String="./")
@@ -437,6 +457,7 @@ function strategy_set_trading_span_callback(on_strategy_trading_span_c::Ptr{Noth
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_span_c, user_data)
     return nothing
 end
+export strategy_set_trading_span_callback
 
 """
    on_strategy_trading_day(trading_day::Cint, cur_date::Cint, time::Cint, day_status::UInt8, user_data::Ptr{Cvoid})
@@ -462,6 +483,7 @@ function strategy_set_trading_day_callback(on_strategy_trading_day_c::Ptr{Nothin
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_strategy_trading_day_c, user_data)
     return nothing
 end
+export strategy_set_trading_day_callback
 
 ##############################################md_api################################################################
 #/************************ 获取历史行情相关接口 begin ***************************/
@@ -1097,15 +1119,17 @@ end
 export  md_set_status_change_callback
 #/************************ 订阅实时行情相关接口 end ***********************/
 ###########################################trade_api###############################################
-export cOrderReq    
+export cOrderReq
 export cCancelDetail
-export cCancelReq   
-export cOrderRsp    
-export cOrder       
-export cTrade       
-export cPosition    
-export cCash        
-export cIndicator   
+export cCancelReq
+export cOrderRsp
+export cOrder
+export cTrade
+export cPosition
+export cCash
+export cIndicator
+export cCombActionReq
+export cCombAction
 
 """
     td_order(account_id::String, account_type::Integer, orders::Vector{cOrderReq}, async::Integer=1)::Cint
@@ -1219,8 +1243,27 @@ function td_cancel_all_order(account_id::String, account_type::Integer; trade_se
         end
     end
     return cancel_list
-end    
+end
 export td_cancel_all_order
+
+"""
+    td_comb_action(account_id::String, account_type::Integer, req::cCombActionReq, async::Integer=0)::Cint
+ * 组合申请录入（期货组合/拆分），异步，结果通过组合申请回调通知
+ *
+ * @param account_id    资金账户id
+ * @param account_type  资金账户类型，见AccountType定义
+ * @param req           组合申请请求对象，返回后台系统生成的内部组合申请id(action_id)
+ * @param async         是否异步，0：同步(默认)，非0：异步
+ *
+ * @return              成功返回0(已发往柜台)，失败返回错误码，错误码定义在error.h文件中
+"""
+function td_comb_action(account_id::String, account_type::Integer, req::cCombActionReq, async::Integer=0)::Cint
+    sym = Libc.Libdl.dlsym(lib, :td_comb_action)
+    CombAction_ref = Ref{cCombActionReq}(req)
+    err = ccall(sym, Int32, (Ptr{UInt8}, Cint, Ptr{cCombActionReq}, Cint), account_id, account_type, CombAction_ref, async)
+    return err
+end
+export td_comb_action
 
 """
     td_get_order(order_id::String)::Union{cOrder,Nothing}
@@ -1749,6 +1792,20 @@ function td_set_order_status_callback(on_order_c::Ptr{Nothing}, user_data::Ptr{C
     ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_order_c, user_data)
 end
 export td_set_order_status_callback
+
+"""
+    td_set_comb_action_callback(on_comb_action_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
+ * 设置组合申请回报事件回调函数（组合受理回报与组合错误回报均从此回调通知）
+ *
+ * @param on_comb_action_c  回调函数指针，由 on_comb_action_c = @cfunction(on_comb_action, Cvoid, (Cptr{cCombAction}, Ptr{Cvoid}))
+ *                          将回调函数 on_comb_action(res::Cptr{cCombAction}, user_data::Ptr{Cvoid}) 转换得到
+ * @param user_data         用户自定义参数，与回调相关的任意类型数据，作为回调函数参数输入
+"""
+function td_set_comb_action_callback(on_comb_action_c::Ptr{Nothing}, user_data::Ptr{Cvoid}=C_NULL)::Cvoid
+    sym = Libc.Libdl.dlsym(lib, :td_set_comb_action_callback)
+    ccall(sym, Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), on_comb_action_c, user_data)
+end
+export td_set_comb_action_callback
 
 const oms_query_order = Ref{Function}()
 oms_query_order[] = OrderManager.om_query_order
